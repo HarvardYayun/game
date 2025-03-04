@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <style>
+        body 
+        {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #fdaaaa;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        h1 
+        {
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+        .turn-indicator, .win-message, .start-button 
+        {
+            width: 250px;
+            height: 40px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 2px solid black;
+            background-color: white;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+        }
+        .board 
+        {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            padding: 5px;
+        }
+        .square 
+        {
+            width: 100px;
+            height: 100px;
+            background-color: white;
+            border: 2px solid black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .square:hover 
+        {
+            background-color: #c0c0c0;
+        }
+        .x { color: #c179d1; }
+        .o { color: #92d179; }
+        .start-button 
+        {
+            cursor: pointer;
+            user-select: none;
+            border-radius: 20px;
+            width: 180px;
+            height: 40px;
+            margin-top: 20px;
+        }
+        .start-button:hover 
+        {
+            background-color: black; 
+            color: white; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Tic Tac Toe</h1>
+    <div class="turn-indicator" id="turn-indicator">X's Turn</div>
+    <div class="win-message" id="win-message">Game in Progress</div>
+    <div class="board" id="board"></div>
+    <!-- Add a "Start Game" button to reset the game -->
+    <button class="start-button" id="start-button">Start Game</button>
+    
+
+    <script>
+        // Gets four elements in an HTML page
+        const boardElement = document.getElementById("board");
+        const turnIndicator = document.getElementById("turn-indicator");
+        const winMessage = document.getElementById("win-message");
+        const startButton = document.getElementById("start-button");
+        // Initialize variables
+        let currentPlayer = "X";
+        let boardState = Array(9).fill(null);
+        // Create array called "winConditions"
+        const winConditions = 
+        [
+            // Rows
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], 
+            // Columns
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            // Diagonals 
+            [0, 4, 8], [2, 4, 6]            
+        ];
+
+        function createBoard() 
+        {
+            // Disable the start button at the beginning of the game
+            startButton.disabled = true;
+            
+            // Clear the board 
+            boardElement.innerHTML = "";
+            // Reset 'boardState' to null
+            boardState.fill(null);
+            // Reset the game
+            winMessage.innerText = "Game in Progress";
+            winMessage.style.color = "black";
+            // Randomly select X or O first
+            currentPlayer = Math.random() < 0.5 ? "X" : "O";
+            turnIndicator.innerText = currentPlayer + "'s Turn";
+
+            for (let i = 0; i < 9; i++) {
+                // Create a div to represent the grid
+                const square = document.createElement("div");
+                square.classList.add("square");
+                square.id = "sq" + i;
+                square.addEventListener("click", () => handleMove(i));
+                // Add this div to the board
+                boardElement.appendChild(square);
+            }
+        }
+
+        function handleMove(index) 
+        {
+            // If the cell is already occupied or the game is over, then click is invalid
+            if (boardState[index] || winMessage.innerText !== "Game in Progress") return;
+            
+            boardState[index] = currentPlayer;
+            document.getElementById("sq" + index).innerText = currentPlayer;
+            document.getElementById("sq" + index).classList.add(currentPlayer.toLowerCase());
+            
+            checkWin();
+            // Switch to the next player
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            updateTurnIndicator();
+        }
+
+        function updateTurnIndicator() 
+        {
+            // Update the turn indicator text and color
+            turnIndicator.innerText = currentPlayer + "'s Turn";
+            // Use the same colors as in CSS for O and X
+            turnIndicator.style.color = currentPlayer === "X" ? "#c179d1" : "#92d179"; 
+        }
+
+        function checkWin() 
+        {
+            // Create the Moves array using map()
+            let Moves = boardState.map(cell => cell || null);
+            // Uses console.log() to print the current state of the Moves array to help debug
+            console.log("Current Moves:", Moves); 
+
+            // Iterate winConditions for victory detection
+            for (let condition of winConditions) 
+            {
+                let [a, b, c] = condition;
+                if (Moves[a] && Moves[a] === Moves[b] && Moves[a] === Moves[c]) 
+                    {
+                        winMessage.innerText = Moves[a] + " Wins!";
+                        winMessage.style.color = Moves[a] === "X" ? "#c179d1" : "#92d179"; 
+            
+                        // Enable the Start Game button when game ends (find winner)
+                        startButton.disabled = false;
+                        startButton.style.opacity = "1";
+                        return;
+                    }
+            }
+            if (!Moves.includes(null)) 
+            {
+                // Update the UI to show the winner
+                winMessage.innerText = "It's a Tie!";
+                winMessage.style.color = "black";
+
+                // Enable the Start Game button when game ends (if it's tie)
+                startButton.disabled = false;
+                startButton.style.opacity = "1";
+            }
+        }
+            // Recreate the board by clicking Start button
+            startButton.addEventListener("click", createBoard);
+            createBoard();
+    </script>
+</body>
+</html>
+<!--
+I think the checkWin() function is the strongest code. This function determines the winner or a tie, which is the most critical part of the game.
+This function contains two requirements for this week's assignment: using map() to create a new array "moves" and manipulating the "start game" states.
+I also added the UI into this function to hightlight the X and O's Turns/Wins and Tie, by changing the text color for better visual feedback.
+This function also coordinates re-enabling the “Start Game” button only when the game ends, preventing unnecessary resets.
+The single loop inside is to check all possible winning conditions, which also has early return statements to avoid unnecessary checks.
+-->
