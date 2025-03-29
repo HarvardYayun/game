@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wordle Game</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #fdaaaa;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+    
+    .game-container {
+        background-color: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+        width: 100%;
+    }
+    
+    h1 {
+        text-align: center;
+        color: #3a3a3a;
+        margin-bottom: 20px;
+    }
+    
+    .settings {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+    }
+    
+    #new-game {
+        background-color: #c179d1;
+        color: #fff;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    #new-game:hover {
+        background-color: #000;
+    }
+    
+    .board {
+        display: grid;
+        grid-template-rows: repeat(6, 1fr);
+        grid-gap: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .board-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-gap: 5px;
+    }
+    
+    .tile {
+        aspect-ratio: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2rem;
+        font-weight: bold;
+        border: 2px solid #c8c8c8;
+        text-transform: uppercase;
+    }
+    
+    .keyboard {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        margin-bottom: 15px;
+    }
+    .keyboard-row {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+    }
+    
+    .key {
+        min-width: 30px;
+        height: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #ffffff;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+        border: 1px solid #c8c8c8;
+    }
+    
+    .key:hover {
+        background-color: #c3c6ca;
+    }
+    
+    .key.wide {
+        min-width: 50px;
+    }
+    
+    .message {
+        text-align: center;
+        min-height: 20px;
+        margin-bottom: 10px;
+        color: #666;
+    }
+    
+    #answer-display {
+        text-align: center;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #6aaa64;
+    }
+    
+    .hidden {
+        display: none;
+    }
+    
+    /* Tile states */
+    .tile.correct {
+        background-color: #6aaa64;
+        color: white;
+        border-color: #6aaa64;
+    }
+    
+    .tile.present {
+        background-color: #aac9aa;
+        color: white;
+        border-color: #aac9aa;
+    }
+    
+    .tile.absent {
+        background-color: #ccc;
+        color: white;
+        border-color: #ccc;
+    }
+    
+    /* Keyboard states */
+    .key.correct {
+        background-color: #6aaa64;
+        color: white;
+    }
+    
+    .key.present {
+        background-color: #aac9aa;
+        color: white;
+    }
+    
+    .key.absent {
+        background-color: #ccc;
+        color: white;
+    }
+    .message {
+    white-space: pre-line; 
+    line-height: 1.5; 
+    text-align: center;
+    
+}
+    
+    @media (max-width: 700px) {
+        .game-container {
+            padding: 10px;
+        }
+        
+        .tile {
+            font-size: 1.5rem;
+        }
+        
+        .key {
+            height: 40px;
+            min-width: 25px;
+            font-size: 0.9rem;
+        }
+        
+        .key.wide {
+            min-width: 40px;
+        }
+    }
+    
+    @media (max-width: 600px) {
+        .tile {
+            font-size: 1.2rem;
+        }
+        
+        .key {
+            height: 35px;
+            min-width: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .key.wide {
+            min-width: 35px;
+        }
+    }
+    </style>
+</head>
+<body>
+    
+    <div class="game-container">
+        <h1>Wordle</h1>
+        
+        <div class="settings">
+            <label>
+                <input type="checkbox" id="debug-mode"> Debug Mode (show answer)
+            </label>
+            <button id="new-game">New Game</button>
+        </div>
+        
+        <div id="answer-display" class="hidden"></div>
+        
+        <div class="board" id="game-board"></div>
+        
+        <div class="keyboard">
+            <div class="keyboard-row" id="keyboard-row1"></div>
+            <div class="keyboard-row" id="keyboard-row2"></div>
+            <div class="keyboard-row" id="keyboard-row3"></div>
+        </div>
+        
+        <div class="message" id="game-message"></div>
+        
+        <div class="stats hidden" id="game-stats">
+            <h3>Statistics</h3>
+            <p>Games Played: <span id="games-played">0</span></p>
+            <p>Wins: <span id="wins">0</span></p>
+            <p>Losses: <span id="losses">0</span></p>
+            <p>Win Streak: <span id="win-streak">0</span></p>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        // API Configurations
+        const RANDOM_WORD_API = 'https://random-word-api.herokuapp.com/word?length=5';
+        const OXFORD_API_URL = 'https://od-api-sandbox.oxforddictionaries.com/api/v2/entries/en-gb/';
+        const OXFORD_API_OPTIONS = {
+            method: 'GET',
+            headers: {
+                'app_id': '14a9baff',
+                'app_key': '6de32b0d80d4f2f852e9246a06388180'
+        }
+    };
+
+    // Game Class - Main controller for the Wordle game
+    class WordleGame {
+        constructor() {
+            // Game state
+            this.answer = '';
+            this.guesses = [];
+            this.currentGuess = '';
+            this.gameOver = false;
+            this.debugMode = false;
+            
+            // Statistics
+            this.stats = {
+                gamesPlayed: 0,
+                wins: 0,
+                losses: 0,
+                winStreak: 0,
+                guessDistribution: [0, 0, 0, 0, 0, 0]
+            };
+            
+            // DOM elements
+            this.boardElement = document.getElementById('game-board');
+            this.messageElement = document.getElementById('game-message');
+            this.answerDisplay = document.getElementById('answer-display');
+            this.debugCheckbox = document.getElementById('debug-mode');
+            this.newGameButton = document.getElementById('new-game');
+            this.statsElement = document.getElementById('game-stats');
+            
+            // Initialize the game
+            this.initBoard();
+            this.initKeyboard();
+            this.loadStats();
+            this.startNewGame();
+            
+            // Event listeners
+            this.debugCheckbox.addEventListener('change', () => {
+                // Update the game's debug mode status based on the checkbox state (true/false)
+                this.debugMode = this.debugCheckbox.checked;
+                // Show or hide the answer based on the debug mode setting
+                this.toggleAnswerDisplay();
+            });
+            // When the "New Game" button is clicked, start a brand new game.
+            this.newGameButton.addEventListener('click', () => this.startNewGame());
+            
+            // Keyboard input
+            document.addEventListener('keydown', (e) => this.handleKeyPress(e));
+        }
+    
+        /**
+         * Initializes the game board with empty tiles
+         */
+        initBoard() {
+            // Clear any existing content in the game board container
+            this.boardElement.innerHTML = '';
+            // Loop through 6 rows (Wordle allows 6 guesses)
+            for (let row = 0; row < 6; row++) {
+                const rowElement = document.createElement('div');
+                rowElement.className = 'board-row';
+                // Loop through 5 columns (5-letter word)
+                for (let col = 0; col < 5; col++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.id = `tile-${row}-${col}`;
+                    rowElement.appendChild(tile);
+                }
+                // Add the completed row to the game board
+                this.boardElement.appendChild(rowElement);
+            }
+        }
+        
+        /**
+         * Initializes the on-screen keyboard
+         */
+        initKeyboard() {
+            const keyboardRows = [
+                ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+                ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+                ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'Backspace']
+            ];
+            
+            // Clear existing keyboard
+            document.getElementById('keyboard-row1').innerHTML = '';
+            document.getElementById('keyboard-row2').innerHTML = '';
+            document.getElementById('keyboard-row3').innerHTML = '';
+            
+            // Create keyboard buttons:
+            // Loop through the first row of keyboard keys (Q to P)
+            keyboardRows[0].forEach(key => {
+                const keyElement = this.createKeyElement(key);
+                document.getElementById('keyboard-row1').appendChild(keyElement);
+            });
+            // Loop through the second row of keyboard keys (A to L)
+            keyboardRows[1].forEach(key => {
+                const keyElement = this.createKeyElement(key);
+                document.getElementById('keyboard-row2').appendChild(keyElement);
+            });
+            // Loop through the third row of keyboard keys (Enter, Z to M, Backspace)
+            keyboardRows[2].forEach(key => {
+                const keyElement = this.createKeyElement(key);
+                if (key === 'Enter' || key === 'Backspace') {
+                    keyElement.classList.add('wide');
+                }
+                // Add the key element to the third row of the on-screen keyboard
+                document.getElementById('keyboard-row3').appendChild(keyElement);
+            });
+        }
+        
+        /**
+         * Creates a keyboard key element
+         * @param {string} key - The key character
+         * @returns {HTMLElement} The created key element
+         */
+        // Creates a virtual keyboard key element with appropriate behavior
+        createKeyElement(key) {
+            const keyElement = document.createElement('div');
+            // Assign it the CSS class 'key' for styling
+            keyElement.className = 'key';
+            // Set the visible text on the key (e.g., 'A', 'Enter', etc.)
+            keyElement.textContent = key;
+            // Store the key value in a custom data attribute for easy access later
+            keyElement.dataset.key = key;
+            
+            keyElement.addEventListener('click', () => {
+                // If the key is 'Enter', submit the current guess
+                if (key === 'Enter') {
+                    this.submitGuess();
+                // If the key is 'Backspace', remove the last letter
+                } else if (key === 'Backspace') {
+                    this.removeLetter();
+                // Otherwise, add the clicked letter to the current guess
+                } else {
+                    this.addLetter(key);
+                }
+            });
+            
+            return keyElement;
+        }
+        
+        /**
+         * Starts a new game with a random word from the API
+         */
+        async startNewGame() {
+            // Show loading message while fetching a new word
+            this.showMessage('Loading new word...');
+
+            // Reset game state
+            try {
+                // Fetch a new 5-letter word from the API and store it as the answer
+                this.answer = await this.getRandomWord();
+                // Clear the list of previous guesses
+                this.guesses = [];
+                // Reset the current guess input
+                this.currentGuess = '';
+                // Set the game state to not over (new game)
+                this.gameOver = false;
+                // Enable or disable debug mode based on the checkbox state
+                this.debugMode = this.debugCheckbox.checked;
+                
+                // Clear the board
+                this.initBoard();
+
+                // Reset keyboard state
+                this.resetKeyboard();
+                
+                // Clear message if successful
+                this.messageElement.textContent = '';
+                
+                // Toggle answer display based on debug mode
+                this.toggleAnswerDisplay();
+                
+                // Hide stats
+                this.statsElement.classList.add('hidden');
+                
+                console.log('Answer:', this.answer); // For debugging
+            } catch (error) {
+                console.error('Error starting new game:', error);
+                this.showMessage('Failed to load new word. Please try again.');
+                // Fallback to local word list (in case API is not connected)
+                const words = [
+                    'APPLE', 'BRAIN', 'CRANE', 'DANCE', 'EAGLE',
+                    'FAULT', 'GRADE', 'HEART', 'IGLOO', 'JUICE',
+                    'KOALA', 'LIGHT', 'MUSIC', 'NIGHT', 'OCEAN',
+                    'PRIDE', 'QUILT', 'RIVER', 'SNAKE', 'TIGER',
+                    'UMBRA', 'VOICE', 'WATER', 'YACHT', 'ZEBRA'
+                ];
+                this.answer = words[Math.floor(Math.random() * words.length)];
+                this.toggleAnswerDisplay();
+            }
+        }
+        /**
+        * Resets the keyboard state by removing all status classes
+        */
+        resetKeyboard() {
+            const keys = document.querySelectorAll('.key');
+            keys.forEach(key => {
+                key.classList.remove('correct', 'present', 'absent');
+            });
+        }
+        
+        /**
+         * Gets a random 5-letter word from the API
+         * @returns {Promise<string>} A random 5-letter word in uppercase
+         */
+        async getRandomWord() {
+            try {
+                // Send a GET request to the RANDOM_WORD_API endpoint
+                const response = await fetch(RANDOM_WORD_API);
+                // If the response is not OK (status code not 200–299), throw an error
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                // Parse the response body as JSON
+                const data = await response.json();
+                // Validate the returned data: it must exist, contain at least one item, and the word must be 5 letters
+                if (!data || !data[0] || data[0].length !== 5) {
+                    throw new Error('Invalid word received from API');
+                }
+                // Return the word in uppercase (e.g., "apple" -> "APPLE")
+                return data[0].toUpperCase();
+            } catch (error) {
+                // Log any error that occurs during the fetch or validation process
+                console.error('Error fetching random word:', error);
+                // Re-throw to be handled by caller by the function that called this one
+                throw error; 
+            }
+        }
+        
+        /**
+         * Validates if a word exists in the dictionary
+         * @param {string} word - The word to validate
+         * @returns {Promise<boolean>} True if the word is valid
+         */
+        async validateWord(word) {
+            // Don't validate words that are obviously invalid
+            if (word.length !== 5 || !/^[A-Z]{5}$/.test(word)) {
+                return false;
+            }
+            
+            try {
+                const response = await fetch(`${OXFORD_API_URL}${word.toLowerCase()}`, OXFORD_API_OPTIONS);
+                
+                // The API returns 404 for words not found
+                if (response.status === 404) {
+                    return false;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return Array.isArray(data) && data.length > 0;
+            } catch (error) {
+                console.error('Error validating word:', error);
+                // In case of API failure, assume the word is valid
+                return true;
+            }
+        }
+        
+        /**
+         * Toggles the answer display based on debug mode
+         */
+        toggleAnswerDisplay() {
+            if (this.debugMode) {
+                this.answerDisplay.textContent = `Answer: ${this.answer}`;
+                this.answerDisplay.classList.remove('hidden');
+            } else {
+                this.answerDisplay.classList.add('hidden');
+            }
+        }
+        
+        /**
+         * Handles keyboard input
+         * @param {KeyboardEvent} event - The key press event
+         */
+        handleKeyPress(event) {
+            if (this.gameOver) return;
+            
+            const key = event.key.toUpperCase();
+            
+            if (key === 'ENTER') {
+                event.preventDefault(); 
+                this.submitGuess();
+            } else if (key === 'BACKSPACE') {
+                this.removeLetter();
+            } else if (/^[A-Z]$/.test(key)) {
+                this.addLetter(key);
+            }
+        }
+        
+        /**
+         * Adds a letter to the current guess
+         * @param {string} letter - The letter to add
+         */
+        addLetter(letter) {
+            if (this.currentGuess.length < 5) {
+                this.currentGuess += letter;
+                this.updateBoard();
+            }
+        }
+        
+        /**
+         * Removes the last letter from the current guess
+         */
+        removeLetter() {
+            if (this.currentGuess.length > 0) {
+                this.currentGuess = this.currentGuess.slice(0, -1);
+                this.updateBoard();
+            }
+        }
+        
+        /**
+         * Updates the game board to reflect the current state
+         */
+        updateBoard() {
+            // Clear all tiles in the current row
+            const currentRow = this.guesses.length;
+            for (let col = 0; col < 5; col++) {
+                const tile = document.getElementById(`tile-${currentRow}-${col}`);
+                tile.textContent = '';
+                tile.className = 'tile';
+            }
+            
+            // Fill tiles with current guess
+            for (let col = 0; col < this.currentGuess.length; col++) {
+                const tile = document.getElementById(`tile-${currentRow}-${col}`);
+                tile.textContent = this.currentGuess[col];
+            }
+        }
+        
+        /**
+         * Submits the current guess for validation
+         */
+        async submitGuess() {
+            if (this.gameOver) return;
+            
+            // Check if guess is complete
+            if (this.currentGuess.length !== 5) {
+                this.showMessage('Guess must be 5 letters');
+                return;
+            }
+            
+            // Show validating message
+            this.showMessage('Validating word...');
+            
+            // Validate word through API
+            const isValid = await this.validateWord(this.currentGuess);
+            if (!isValid) {
+                this.showMessage('Not a valid word');
+                return;
+            }
+            
+            // Process the guess
+            this.guesses.push(this.currentGuess);
+            this.processGuess(this.currentGuess);
+            this.currentGuess = '';
+            
+            // Check for win/lose conditions
+            if (this.guesses[this.guesses.length - 1] === this.answer) {
+                this.gameWon();
+            } else if (this.guesses.length >= 6) {
+                this.gameLost();
+            }
+        }
+        
+        /**
+         * Processes a submitted guess and updates the board
+         * @param {string} guess - The submitted guess
+         */
+        processGuess(guess) {
+            const currentRow = this.guesses.length - 1;
+            const answerLetters = this.answer.split('');
+            const guessLetters = guess.split('');
+            
+            // First pass: mark correct letters
+            for (let i = 0; i < 5; i++) {
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                const key = document.querySelector(`.key[data-key="${guessLetters[i]}"]`);
+                
+                if (guessLetters[i] === answerLetters[i]) {
+                    // Correct position
+                    tile.classList.add('correct');
+                    key.classList.add('correct');
+                    answerLetters[i] = null; // Mark as processed
+                }
+            }
+            
+            // Second pass: mark present letters
+            // Loop through each letter position (0 to 4) of the guess
+            for (let i = 0; i < 5; i++) {
+                // Get the tile DOM element for the current row and column
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                // Get the virtual keyboard key element that matches the guessed letter
+                const key = document.querySelector(`.key[data-key="${guessLetters[i]}"]`);
+                // Only process this letter if it was not already marked as 'correct' in the first pass
+                if (!tile.classList.contains('correct')) {
+                    const indexInAnswer = answerLetters.indexOf(guessLetters[i]);
+                    if (indexInAnswer !== -1) {
+                        // Present but wrong position
+                        tile.classList.add('present');
+                        // Only mark the key as 'present' if it's not already marked as 'correct'
+                        if (!key.classList.contains('correct')) {
+                            key.classList.add('present');
+                        }
+                        answerLetters[indexInAnswer] = null; // Mark as processed
+                    } else {
+                        // Letter is not in the answer at all
+                        tile.classList.add('absent');
+                        // Only mark the key as 'absent' if it’s not already marked as 'correct' or 'present'
+                        if (!key.classList.contains('correct') && !key.classList.contains('present')) {
+                            key.classList.add('absent');
+                        }
+                    }
+                }
+            }
+            
+            // Generate feedback message
+            const feedback = this.generateFeedback(guess);
+            this.showMessage(feedback);
+        }
+        
+        /**
+         * Generates feedback for a guess
+         * @param {string} guess - The submitted guess
+         * @returns {string} Feedback message
+         */
+        generateFeedback(guess) {
+            const answerLetters = this.answer.split('');
+            const guessLetters = guess.split('');
+            const feedback = [];
+            
+            for (let i = 0; i < 5; i++) {
+                if (guessLetters[i] === answerLetters[i]) {
+                    feedback.push(`the ${guessLetters[i]} is correct`);
+                } else if (this.answer.includes(guessLetters[i])) {
+                    feedback.push(`the ${guessLetters[i]} is in the wrong place`);
+                } else {
+                    feedback.push(`the ${guessLetters[i]} is not in the word`);
+                }
+            }
+            
+            return feedback.join('<br>');
+        }
+        
+        /**
+         * Handles game won scenario
+         */
+        gameWon() {
+            this.gameOver = true;
+            // Show a congratulatory message with the correct answer and how many tries were used
+            this.showMessage(`Congratulations! You guessed "${this.answer}" in ${this.guesses.length} ${this.guesses.length === 1 ? 'try' : 'tries'}!`);
+            
+            // Update statistics
+            this.stats.gamesPlayed++;
+            this.stats.wins++;
+            this.stats.winStreak++;
+            this.stats.guessDistribution[this.guesses.length - 1]++;
+            this.saveStats();
+            this.showStats();
+            
+            // Add celebration effect
+            this.celebrate();
+        }
+        
+        /**
+         * Handles game lost scenario
+         */
+        gameLost() {
+            this.gameOver = true;
+            this.showMessage(`Game over! The word was "${this.answer}".`);
+            
+            // Update statistics
+            this.stats.gamesPlayed++;
+            this.stats.losses++;
+            this.stats.winStreak = 0;
+            this.saveStats();
+            this.showStats();
+        }
+        
+        /**
+         * Displays a message to the player
+         * @param {string} message - The message to display
+         */
+        showMessage(message) {
+            this.messageElement.innerHTML = message;
+        }
+        
+        /**
+         * Celebration effect for winning
+         */
+        celebrate() {
+            // Determine the current row index (the last guess made)
+            const currentRow = this.guesses.length - 1;
+            for (let i = 0; i < 5; i++) {
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                // Set a timed animation with increasing delay for each tile
+                setTimeout(() => {
+                    tile.style.transform = 'scale(1.1)';
+                    tile.style.transition = 'transform 0.2s';
+                     // After 200 milliseconds, reset the tile back to normal size
+                    setTimeout(() => {
+                        tile.style.transform = 'scale(1)';
+                    }, 200);
+                    // Each tile animates slightly later than the previous
+                }, i * 100);
+            }
+        }
+        
+        /**
+         * Loads statistics from localStorage
+         */
+        loadStats() {
+            const savedStats = localStorage.getItem('wordleStats');
+            if (savedStats) {
+                this.stats = JSON.parse(savedStats);
+            }
+        }
+        
+        /**
+         * Saves statistics to localStorage
+         */
+        saveStats() {
+            localStorage.setItem('wordleStats', JSON.stringify(this.stats));
+        }
+        
+        /**
+         * Displays game statistics
+         */
+        showStats() {
+            document.getElementById('games-played').textContent = this.stats.gamesPlayed;
+            document.getElementById('wins').textContent = this.stats.wins;
+            document.getElementById('losses').textContent = this.stats.losses;
+            document.getElementById('win-streak').textContent = this.stats.winStreak;
+            this.statsElement.classList.remove('hidden');
+        }
+    }
+
+    // Initialize the game when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        new WordleGame();
+    });
+    </script>
+    </body>
+</html>
+
+
+
+
+<!--API used:
+I used two APIs:
+1. Random Word API: https://random-word-api.herokuapp.com/word?length=5
+This provides random 5-letter words for the game.
+It's simple and straightforward to use. No authentication required
+
+2. Oxford Dictionary API: https://od-api-sandbox.oxforddictionaries.com/api/v2/entries/en-gb/
+It is used to validate if guessed words are actual English words
+It's better than the previous free one (DICTIONARY_API) I used.
+Because it is authoritative source for word validation
+It also equires authentication, including app_id and app_key. 
+(For the purpose of this assignment, I put id and key into the code. But in real project, it's not recommended.)
+
+Most satisfying part:
+The most satisfying part was implementing the game logic, getting the core Wordle mechanics working 
+(letter checking, coloring tiles, keyboard feedback).
+Especially was using JavaScript objects to organize the game state and logic, 
+and getting the API integration to work smoothly with fetch(). Seeing the game respond 
+to each guess correctly, also with the debug mode on, was very rewarding.
+
+URL: 
+-->
