@@ -1,0 +1,26 @@
+
+
+{
+	"ships": [
+	  {
+		"name": "Battleship",
+		"size": 4,
+		"coords": [2, 3],
+		"orientation": "vertical"
+	  },
+	  {
+		"name": "Cruiser",
+		"size": 3,
+		"coords": [3, 1],
+		"orientation": "horizontal"
+	  },
+	  {
+		"name": "Destroyer",
+		"size": 2,
+		"coords": [5, 5],
+		"orientation": "vertical"
+	  }
+	],
+	"boardSize": 6
+  }
+

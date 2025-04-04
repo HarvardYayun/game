@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #game-container {
+            display: inline-block;
+            margin: 20px auto;
+            width: 100%;
+            max-width: 700px;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        #board {
+            width: 100%;
+            aspect-ratio: 1/1;
+            display: grid;
+            border-radius: 10%;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            width: 100%;
+            height: 100%;
+            border-radius: 10%;
+            background-color: #dcfcff;
+            border: 1px solid #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            position: relative;
+        }
+        .cell::before {
+            content: attr(data-x) ", " attr(data-y);
+            position: absolute;
+            font-size: 12px;
+            top: 5px;
+            left: 5px;
+            color: #666;
+        }
+        .cell.hit {
+            background-color: #ff6b6b;
+        }
+        .cell.miss {
+            background-color: #b9b9b9;
+        }
+        #message {
+            margin: 10px;
+            font-size: 22px;
+            height: 24px;
+        }
+        #guesses-left {
+            font-weight: bold;
+        }
+        #restart-btn {
+            padding: 10px 20px;
+            margin: 20px;
+            background-color: #95f5fe;
+            color: #ff6b6b;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+        #restart-btn:hover {
+            background-color: #ff6b6b;
+            color: #95f5fe;
+            transform: scale(1.10);
+        }
+    </style>
+</head>
+<body>
+    <h1>Battleship</h1>
+    <div id="game-container">
+        <div id="message"></div>
+        <div id="board"></div>
+        <div>Guesses left: <span id="guesses-left">20</span></div>
+        <button id="restart-btn">Restart Game</button>
+    </div>
+
+    <script>
+        const battleshipGame = {
+            // Game state variables
+            boardSize: 6,
+            ships: [],
+            board: [],
+            guessesLeft: 20,
+            gameOver: false,
+            hits: 0,
+            totalShipSquares: 0,
+
+            // Initialize the game
+            init: function() {
+                this.loadShips()
+                    .then(() => {
+                        // Successfully loaded ships
+                        this.buildBoard();
+                        this.placeShips();
+                        this.setupEventListeners();
+                        this.updateMessage("Click on cells to make guesses.");
+                    })
+                    .catch(error => {
+                        // Error handling for ship loading
+                        console.error("Error loading ships:", error);
+                        this.updateMessage("Failed to load ship configuration. Check console for details.");
+                    });
+            },
+
+            // Load ship configuration from JSON file
+            loadShips: async function() {
+                try {
+                    const response = await fetch('ships.json');
+                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                    // Parse JSON data
+                    const data = await response.json();
+                    console.log("Loaded ship data:", data);
+                    // Update game state with loaded data
+                    this.ships = data.ships;
+                    this.boardSize = data.boardSize;
+                    // Calculate total ship squares needed to win
+                    this.totalShipSquares = this.ships.reduce((total, ship) => total + ship.size, 0);
+                    // Initialize empty game board
+                    this.board = Array(this.boardSize).fill().map(() => Array(this.boardSize).fill(null));
+                } catch (error) {
+                    console.error("Fetch error:", error);
+                    // Re-throw for handling in init()
+                    throw error;
+                }
+            },
+
+            // Build the game board UI
+            buildBoard: function() {
+                const boardElement = document.getElementById('board');
+                boardElement.innerHTML = '';
+                // Set grid dimensions (6x6 with 100px cells)
+                boardElement.style.gridTemplateColumns = `repeat(${this.boardSize}, 100px)`;
+                boardElement.style.gridTemplateRows = `repeat(${this.boardSize}, 100px)`;
+                // Create each cell in the grid
+                for (let y = 0; y < this.boardSize; y++) {
+                    for (let x = 0; x < this.boardSize; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        // Store coordinates as [1,1] according to Ed response
+                        cell.dataset.x = x + 1;
+                        cell.dataset.y = y + 1;
+                        boardElement.appendChild(cell);
+                    }
+                }
+            },
+
+            // Place ships on the game board
+            placeShips: function() {
+                this.ships.forEach(ship => {
+                    const [col, row] = ship.coords;
+                    // Convert to [0,0] based array indices
+                    const startX = col - 1;
+                    const startY = row - 1;
+                    const shipCoords = [];
+                    // Place each segment of the ship
+                    for (let i = 0; i < ship.size; i++) {
+                        const x = ship.orientation === 'horizontal' ? startX + i : startX;
+                        const y = ship.orientation === 'vertical' ? startY + i : startY;
+                        // Validate position is within bounds
+                        if (x >= 0 && x < this.boardSize && y >= 0 && y < this.boardSize) {
+                            this.board[y][x] = ship; // Mark board position
+                            shipCoords.push({ x: x + 1, y: y + 1 }); // Store as [1,1] based
+                        } else {
+                            console.error(`Ship ${ship.name} placement out of bounds at (${x+1},${y+1})`);
+                        }
+                    }
+                    ship.coordinates = shipCoords; // Save ship's coordinates
+                    console.log(`Placed ${ship.name} at:`, ship.coordinates);
+                });
+            },
+
+            handleCellClick: function(event) {
+                if (this.gameOver) return;
+                // Skip already guessed cells
+                const cell = event.target;
+                if (cell.classList.contains('hit') || cell.classList.contains('miss')) return;
+                
+                // Convert [1,1] based to [0,0] based indices
+                const x = parseInt(cell.dataset.x) - 1;
+                const y = parseInt(cell.dataset.y) - 1;
+                // Check if hit or miss
+                if (this.board[y][x]) {
+                    // Hit a ship
+                    cell.classList.add('hit');
+                    this.hits++;
+                    this.updateMessage(`Hit at (${x+1}, ${y+1})!`);
+                } else {
+                    // Miss
+                    cell.classList.add('miss');
+                    this.updateMessage(`Miss at (${x+1}, ${y+1}).`);
+                }
+                // Update game state
+                this.guessesLeft--;
+                document.getElementById('guesses-left').textContent = this.guessesLeft;
+                // Check win/lose conditions
+                if (this.hits === this.totalShipSquares) {
+                    this.gameOver = true;
+                    this.revealShips();
+                    this.updateMessage("Congratulations! You sunk all ships!");
+                } else if (this.guessesLeft === 0) {
+                    this.gameOver = true;
+                    this.revealShips();
+                    this.updateMessage("Game over! You ran out of guesses.");
+                }
+            },
+            // Reveal all ships when game ends
+            revealShips: function() {
+                this.ships.forEach(ship => {
+                    ship.coordinates.forEach(coord => {
+                        const cell = document.querySelector(`.cell[data-x="${coord.x}"][data-y="${coord.y}"]`);
+                        // Mark any unhit ship segments
+                        if (!cell.classList.contains('hit')) {
+                            cell.classList.add('hit');
+                        }
+                    });
+                });
+            },
+            // Update game message display
+            updateMessage: function(text) {
+                document.getElementById('message').textContent = text;
+            },
+            // Set up event listeners
+            setupEventListeners: function() {
+                // Cell click handler
+                document.getElementById('board').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('cell')) {
+                        this.handleCellClick(e);
+                    }
+                });
+                // Restart button handler
+                document.getElementById('restart-btn').addEventListener('click', () => {
+                    this.resetGame();
+                });
+            },
+            // Reset game to initial state
+            resetGame: function() {
+                // Rest game state
+                this.board = Array(this.boardSize).fill().map(() => Array(this.boardSize).fill(null));
+                this.guessesLeft = 20;
+                this.gameOver = false;
+                this.hits = 0;
+                // Update UI
+                document.getElementById('guesses-left').textContent = this.guessesLeft;
+                document.getElementById('message').textContent = '';
+                // Rebuild board
+                this.buildBoard();
+                this.placeShips();
+                this.updateMessage("Click on cells to make guesses.");
+            }
+        };
+
+        // Start the game when DOM is fully loaded
+        window.addEventListener('DOMContentLoaded', () => {
+            battleshipGame.init();
+        });
+    </script>
+</body>
+</html>
+
+<!--
+The most useful object variation was the object with methods, the class-like object pattern like the battleshipGame object:
+const battleshipGame = { ... };
+It combines state (properties like boardSize, ships) and behavior (methods like init(), placeShips(), loadShips(), buildBoard()).
+It allowed me to group all game-related data and functions in one place. 
+This made the code easier to organize, read, and debug.
+It also made the logic much cleaner than writing everything globally or in separate functions.
+
+The easiest part was building the 6x6 game board grid using nested for loops and dynamically creating HTML elements. 
+Once I set up the grid layout in CSS with display: grid;,
+it was straightforward to create cells and use data-x and data-y attributes to store coordinates.
+It was fun to style the cells and add different colors for hits and misses using class names.
+
+URL: 
+-->
