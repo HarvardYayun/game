@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wordle Redux - JSX</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .row { display: flex; margin-bottom: 5px; }
+    .tile {
+      width: 40px; height: 40px; margin: 2px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #ccc;
+      text-transform: uppercase;
+    }
+    .purple { background: #be9fe2; color: white; }
+    .yellow { background: #a7d572; color: white; }
+    .gray { background: #b6b6b6; color: white; }
+    .keyboard { display: flex; flex-wrap: wrap; max-width: 400px; margin-top: 20px; }
+    .key {
+      width: 30px; height: 40px; margin: 2px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- React with JSX support (via Babel) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Your JSX code -->
+  <script type="text/babel">
+    const target = "moody";
+    const guesses = ["might", "flood", "stray"];
+
+    function evaluateGuess(guess) {
+      const result = [];
+      for (let i = 0; i < guess.length; i++) {
+        if (guess[i] === target[i]) {
+          result.push("purple");
+        } else if (target.includes(guess[i])) {
+          result.push("yellow");
+        } else {
+          result.push("gray");
+        }
+      }
+      return result;
+    }
+
+    function Tile({ letter, color }) {
+      return <div className={`tile ${color}`}>{letter}</div>;
+    }
+
+    function Row({ word }) {
+      const colors = evaluateGuess(word);
+      return (
+        <div className="row">
+          {word.split("").map((char, i) => (
+            <Tile key={i} letter={char} color={colors[i]} />
+          ))}
+        </div>
+      );
+    }
+
+    function Board() {
+      return (
+        <>
+          {guesses.map((word, i) => (
+            <Row key={i} word={word} />
+          ))}
+        </>
+      );
+    }
+
+    function Keyboard() {
+      const letters = "QWERTYUIOPASDFGHJKLZXCVBNM".split("");
+      return (
+        <div className="keyboard">
+          {letters.map((char, i) => (
+            <div key={i} className="key">{char}</div>
+          ))}
+        </div>
+      );
+    }
+
+    function App() {
+      return (
+        <>
+          <Board />
+          <Keyboard />
+        </>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
+<!--After completing both versions of the assignment, I believe that using React with JSX is clearly better for creating the elements of this app.
+
+JSX allows us to write components in a way that looks and feels like HTML, which makes the code more readable and easier to maintain, especially when dealing with nested structures like the Wordle board or the on-screen keyboard. For example, writing a 6x5 grid of letter tiles using JSX is far more intuitive than using multiple layers of React.createElement calls.
+
+Using pure JS with React.createElement was useful for understanding what JSX compiles down to, but it was verbose and harder to visualize. In contrast, with JSX, the code structure closely matches the visual layout of the UI, which is incredibly helpful when building and debugging components.
+
+JSX also encourages a more declarative coding style, which aligns well with React’s philosophy and makes it easier to break the UI into reusable components.
+
+In summary, JS with React and JSX is the better approach for building this kind of app. JSX improves development speed, reduces mental overhead, and results in cleaner code that is closer to what we want to display on screen.
+
+-->
